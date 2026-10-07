@@ -89,7 +89,7 @@ for platform in macosx iphoneos iphonesimulator; do
   for library in "${LIBRARIES[@]}"; do
     destination="${OUTPUT}/${platform}/lib/lib${library}.a"
     cp "${prefix}/lib/lib${library}.a" "$destination"
-    lipo -verify_arch arm64 "$destination"
+    xcrun lipo "$destination" -verify_arch arm64
     archives+=("$destination")
   done
   ruby "${ROOT}/scripts/normalize_static_archive_members.rb" "${archives[@]}"

@@ -38,3 +38,36 @@ FFmpeg LGPL notices and VLC wrapper license notices accompany the binaries.
 Exact upstream source URLs and checksums are retained in the release manifest.
 Wrapper metadata does not replace a license audit of every VLC component or
 the static-link relinking/source obligations for a future App Store release.
+
+## GitHub Actions builds
+
+Run **Build Apple dependencies** with a new immutable version:
+
+```sh
+gh workflow run build-dependencies.yml \
+  --repo jacobjiangwei/CinavoDependencies --field version=2026.10.07.2
+```
+
+The workflow uses an arm64 `macos-26` runner and compiles FFmpeg from source for
+all three SDKs. It restores only the checksum-verified `Pods/` snapshot pinned
+in `prepared-pods.json`; it does not reuse old FFmpeg binaries or compile an
+application. This avoids both a second private-repository credential and
+CocoaPods/Ruby setup on the app's Xcode Cloud runners. GitHub's built-in
+`GITHUB_TOKEN` downloads the seed and publishes the new private Release.
+
+Each Release includes the runtime archive, SHA-256, per-file manifest and exact
+FFmpeg source archive. Existing Releases are never overwritten. The consumer
+must explicitly pin the new archive asset ID and SHA-256 in
+`Cinavo/Configuration/Dependencies.lock.json`; it never downloads `latest`.
+
+When changing VLC versions or the consumer Podfile, run the locked CocoaPods
+installation locally and generate a new prepared snapshot:
+
+```sh
+python3 scripts/package_dependencies.py \
+  --cinavo /path/to/tools/Cinavo --version NEW_VERSION
+```
+
+Publish that snapshot and update its tag, asset name and hashes in
+`prepared-pods.json` before another cloud build. The cloud packager rejects
+changed VLC specifications or Podfile hashes instead of silently mixing inputs.

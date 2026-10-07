@@ -1,0 +1,80 @@
+name: Build Apple dependencies
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "New immutable dependency version, for example 2026.10.07.2"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apple-dependencies-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+      JOBS: "4"
+    steps:
+      - name: Check out build recipes
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Validate version and build environment
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          import subprocess
+          import sys
+          if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", os.environ["RELEASE_VERSION"]):
+              raise ValueError("Use a new dependency version without path separators.")
+          if sys.version_info < (3, 12):
+              raise RuntimeError("Packaging requires Python 3.12 or newer.")
+          for platform in ("macosx", "iphoneos", "iphonesimulator"):
+              version = subprocess.check_output(
+                  ["xcrun", "--sdk", platform, "--show-sdk-version"], text=True
+              ).strip()
+              if int(version.split(".")[0]) < 26:
+                  raise RuntimeError(f"{platform} SDK 26 or newer is required.")
+          PY
+          xcodebuild -version
+
+      - name: Download locked prepared CocoaPods snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .build/prepared-pods
+          tag="$(python3 -c 'import json; print(json.load(open("prepared-pods.json"))["tag"])')"
+          asset="$(python3 -c 'import json; print(json.load(open("prepared-pods.json"))["asset_name"])')"
+          gh release download "$tag" --repo "$GITHUB_REPOSITORY" \
+            --pattern "$asset" --dir .build/prepared-pods
+
+      - name: Compile static LGPL FFmpeg for all three Apple platforms
+        run: bash scripts/build_ffmpeg.sh
+
+      - name: Package and verify runtime dependencies
+        run: |
+          asset="$(python3 -c 'import json; print(json.load(open("prepared-pods.json"))["asset_name"])')"
+          python3 scripts/package_dependencies.py \
+            --pods-archive ".build/prepared-pods/$asset" --version "$RELEASE_VERSION"
+
+      - name: Publish immutable dependency Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          archive="dist/cinavo-dependencies-${RELEASE_VERSION}.tar.gz"
+          source=".build/ffmpeg/ffmpeg-7.1.3.tar.xz"
+          gh release create "deps-${RELEASE_VERSION}" \
+            "$archive" "$archive.sha256" "$archive.manifest.json" "$source" \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "Cinavo Apple dependencies ${RELEASE_VERSION}" \
+            --notes "FFmpeg 7.1.3 built from verified LGPL source on GitHub Actions for arm64 macOS, iOS devices and iOS simulators. Includes the checksum-verified prepared VLCKit/MobileVLCKit CocoaPods snapshot, runtime-only frameworks, per-file manifest, archive SHA-256 and exact FFmpeg source. No application code, model weights or debug symbols."

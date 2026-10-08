@@ -1,8 +1,0 @@
-{
-  "format": 1,
-  "tag": "deps-2026.10.07.1",
-  "asset_name": "cinavo-dependencies-2026.10.07.1.tar.gz",
-  "sha256": "194f0c93fe1ba3717cf4bf88b02eb6f7ee2176f95fb8e12c1b68d81d3585a203",
-  "podfile_sha256": "086bca63ac5ae6cca2a80b5d8ea1b6e5d6822aea113f26ff84a4abd5ccc632c4",
-  "podfile_lock_sha256": "2d868b3cf6e2354d7eb824362dc20ea252854983c9cafee5fe6b214a32978104"
-}

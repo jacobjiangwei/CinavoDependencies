@@ -1,10 +1,10 @@
-name: Build Apple dependencies
+name: Build Apple FFmpeg
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "New immutable dependency version, for example 2026.10.07.2"
+        description: "New immutable FFmpeg version, for example 2026.10.08.1"
         required: true
         type: string
 
@@ -48,33 +48,21 @@ jobs:
           PY
           xcodebuild -version
 
-      - name: Download locked prepared CocoaPods snapshot
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          mkdir -p .build/prepared-pods
-          tag="$(python3 -c 'import json; print(json.load(open("prepared-pods.json"))["tag"])')"
-          asset="$(python3 -c 'import json; print(json.load(open("prepared-pods.json"))["asset_name"])')"
-          gh release download "$tag" --repo "$GITHUB_REPOSITORY" \
-            --pattern "$asset" --dir .build/prepared-pods
-
       - name: Compile static LGPL FFmpeg for all three Apple platforms
         run: bash scripts/build_ffmpeg.sh
 
-      - name: Package and verify runtime dependencies
+      - name: Package and verify FFmpeg
         run: |
-          asset="$(python3 -c 'import json; print(json.load(open("prepared-pods.json"))["asset_name"])')"
-          python3 scripts/package_dependencies.py \
-            --pods-archive ".build/prepared-pods/$asset" --version "$RELEASE_VERSION"
+          python3 scripts/package_dependencies.py --version "$RELEASE_VERSION"
 
       - name: Publish immutable dependency Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          archive="dist/cinavo-dependencies-${RELEASE_VERSION}.tar.gz"
+          archive="dist/cinavo-ffmpeg-${RELEASE_VERSION}.tar.gz"
           source=".build/ffmpeg/ffmpeg-7.1.3.tar.xz"
           gh release create "deps-${RELEASE_VERSION}" \
             "$archive" "$archive.sha256" "$archive.manifest.json" "$source" \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "Cinavo Apple dependencies ${RELEASE_VERSION}" \
-            --notes "FFmpeg 7.1.3 built from verified LGPL source on GitHub Actions for arm64 macOS, iOS devices and iOS simulators. Includes the checksum-verified prepared VLCKit/MobileVLCKit CocoaPods snapshot, runtime-only frameworks, per-file manifest, archive SHA-256 and exact FFmpeg source. No application code, model weights or debug symbols."
+            --title "Cinavo Apple FFmpeg ${RELEASE_VERSION}" \
+            --notes "FFmpeg 7.1.3 built from verified LGPL source on GitHub Actions for arm64 macOS, iOS devices and iOS simulators. Includes five static libraries per platform, headers, LGPL notices, per-file manifest, archive SHA-256 and exact corresponding FFmpeg source. No CocoaPods, VLC frameworks, application code, model weights or debug symbols."

@@ -1,103 +1,72 @@
 # CinavoDependencies
 
-Dependency build recipes and versioned Release assets for Cinavo.
-No application code, UI, model weights or credentials belong in this repository.
-Binaries are Release assets, never Git or Git LFS objects.
+FFmpeg build recipes and versioned Release assets for Cinavo. Only FFmpeg is
+delivered here: CocoaPods and VLC stay in the application repository, following
+the existing iOS project's vendored-Pods workflow.
 
 ## FFmpeg
 
-`dependencies.json` pins FFmpeg 7.1.3 and the SHA-256 of its official source.
-`scripts/build_ffmpeg.sh` builds only the five static libraries for arm64 macOS,
-iOS devices and iOS simulators. Minimum versions are macOS 26.0 and iOS 26.0.
-CLI programs, GPL components and nonfree components are disabled.
+`dependencies.json` pins FFmpeg 7.1.3 and its official source SHA-256.
+`scripts/build_ffmpeg.sh` builds five static libraries for each of arm64 macOS,
+iOS devices and iOS simulators: avformat, avcodec, avutil, swresample and swscale.
+Minimum versions are macOS 26.0 and iOS 26.0. CLI programs, GPL components,
+nonfree components and automatically detected external libraries are disabled.
 
 ```sh
 bash scripts/build_ffmpeg.sh
+python3 scripts/package_dependencies.py --version NEW_VERSION
 ```
 
-`JOBS` defaults to four and accepts 1-8. A local verified source archive can be
-provided as `FFMPEG_SOURCE_ARCHIVE`; it receives the same mandatory checksum
-validation as a fresh download. Output and source caches are ignored by Git.
+`JOBS` defaults to four and accepts 1-8. `FFMPEG_SOURCE_ARCHIVE` can supply a
+local source archive, subject to the same mandatory checksum verification.
+Build output and source caches stay out of Git and Git LFS.
 
-## Release bundle
+## GitHub Actions and Releases
 
-The bundle contains newly built FFmpeg libraries/headers/licenses and the
-pinned upstream VLCKit 3.7.3 / MobileVLCKit 3.7.4 runtime frameworks.
-VLC frameworks are upstream precompiled CocoaPods artifacts, not claimed to
-have been compiled locally. Prepared CocoaPods project, xcconfig and xcfilelist
-files are included so Xcode Cloud does not need to install CocoaPods with its
-system Ruby. These support files are tied to the consumer's Podfile/lockfile
-hashes. Swift dependencies such as WhisperKit remain native SwiftPM packages.
-
-Debug symbols, DerivedData, compiled app bundles and secrets are excluded.
-Release consumers must verify the archive SHA-256 and the consumer lockfile
-hashes before extraction. Public downloads require no credential. If the
-repository becomes private, use a repository-scoped read-only token configured
-as an Xcode Cloud secret; no token is stored here.
-
-FFmpeg LGPL notices and VLC wrapper license notices accompany the binaries.
-Exact upstream source URLs and checksums are retained in the release manifest.
-Wrapper metadata does not replace a license audit of every VLC component or
-the static-link relinking/source obligations for a future App Store release.
-
-## Public distribution boundaries
-
-Public visibility includes all Git history, Actions logs and Release assets.
-Keep this repository limited to dependency recipes and runtime bundles: no
-application source, app bundles, models, signing material or credentials.
-GitHub's workflow token is used only to read inputs and publish Releases and
-must never be printed. Public consumers should leave their optional download
-token unset; version/asset pins and all checksum validations still apply.
-
-The runtime bundles retain the upstream VLCKit/MobileVLCKit `COPYING.txt`,
-CocoaPods acknowledgements and FFmpeg `COPYING.LGPLv2.1`. The exact FFmpeg
-source archive accompanies each binary Release; the tagged build recipe and
-manifest record its configuration and source checksum. Do not apply a blanket
-proprietary or permissive license to these third-party binaries.
-
-The disabled GPL/nonfree flags describe only our separately compiled FFmpeg,
-not every component in the upstream VLC binaries. The VLC download URLs in
-`dependencies.json` identify binary packages, not corresponding source
-archives. Matching VLC and bundled-library sources, their license conditions
-and the preparation changes still need to be accounted for; a wrapper LGPL
-notice alone is not proof that all redistribution obligations are fulfilled.
-
-Before distributing an App Store application, also address library attribution,
-any required modified-library sources and the applicable static-link relinking
-requirements. Making this repository public is not a substitute for that work
-and does not establish codec patent clearance. See the upstream
-[FFmpeg legal checklist](https://ffmpeg.org/legal.html) and
-[VideoLAN redistribution guidance](https://www.videolan.org/legal.html).
-
-## GitHub Actions builds
-
-Run **Build Apple dependencies** with a new immutable version:
+Run **Build Apple FFmpeg** with a new immutable version:
 
 ```sh
 gh workflow run build-dependencies.yml \
-  --repo jacobjiangwei/CinavoDependencies --field version=2026.10.07.2
+  --repo jacobjiangwei/CinavoDependencies --field version=2026.10.08.1
 ```
 
-The workflow uses an arm64 `macos-26` runner and compiles FFmpeg from source for
-all three SDKs. It restores only the checksum-verified `Pods/` snapshot pinned
-in `prepared-pods.json`; it does not reuse old FFmpeg binaries or compile an
-application. This avoids both a second private-repository credential and
-CocoaPods/Ruby setup on the app's Xcode Cloud runners. GitHub's built-in
-`GITHUB_TOKEN` downloads the seed and publishes the new Release.
+The arm64 `macos-26` job verifies and compiles FFmpeg from source for all three
+SDKs. It neither downloads nor packages CocoaPods or VLC. The built-in workflow
+token publishes the Release and is never stored in artifacts.
 
-Each Release includes the runtime archive, SHA-256, per-file manifest and exact
-FFmpeg source archive. Existing Releases are never overwritten. The consumer
-must explicitly pin the new archive asset ID and SHA-256 in
-`Cinavo/Configuration/Dependencies.lock.json`; it never downloads `latest`.
+Each `deps-NEW_VERSION` Release includes:
 
-When changing VLC versions or the consumer Podfile, run the locked CocoaPods
-installation locally and generate a new prepared snapshot:
+- `cinavo-ffmpeg-NEW_VERSION.tar.gz`: only `Vendor/FFmpeg/` and its manifest.
+- Its SHA-256 sidecar and per-file manifest (format 2).
+- The exact corresponding `ffmpeg-7.1.3.tar.xz` source archive.
 
-```sh
-python3 scripts/package_dependencies.py \
-  --cinavo /path/to/tools/Cinavo --version NEW_VERSION
-```
+The consumer pins the asset ID, immutable version and SHA-256 in
+`Cinavo/Configuration/Dependencies.lock.json`. Public consumption is anonymous;
+private consumption requires a repository-scoped Contents: Read token.
+Consumers must verify the checksum and every payload file and must never follow
+`latest` or extract the package over `Pods/`.
 
-Publish that snapshot and update its tag, asset name and hashes in
-`prepared-pods.json` before another cloud build. The cloud packager rejects
-changed VLC specifications or Podfile hashes instead of silently mixing inputs.
+The earlier `2026.10.07.1` and `2026.10.07.2` Releases contain combined
+CocoaPods/VLC/FFmpeg bundles. They are legacy artifacts, not inputs to current
+builds. Existing Releases are not overwritten or automatically deleted.
+
+## Publication and licensing boundaries
+
+Keep application source, CocoaPods/VLC, app bundles, model weights, signing
+material and credentials out of new commits and Releases. Public visibility
+includes history and Actions logs, including the legacy combined releases.
+Third-party code keeps its upstream license; do not apply a blanket proprietary
+or permissive license to these binaries.
+
+FFmpeg LGPL notices accompany its libraries. Each binary Release includes the
+exact source archive, with configuration and provenance recorded in the tagged
+recipe and manifest. Disabled GPL/nonfree flags apply only to this FFmpeg build,
+not to VLC components in legacy artifacts.
+
+This dependency distribution does not settle the application distributor's
+attribution, modified-source, static-link relinking or codec-patent obligations.
+Legacy VLC bundles retain their COPYING files and acknowledgements, but their
+corresponding bundled-library sources and license conditions are not certified
+by the wrapper notice alone. See the
+[FFmpeg legal checklist](https://ffmpeg.org/legal.html) and
+[VideoLAN redistribution guidance](https://www.videolan.org/legal.html).

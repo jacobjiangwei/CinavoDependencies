@@ -1,0 +1,7 @@
+{
+  "version": "4.0.0a25",
+  "source_url": "https://download.videolan.org/cocoapods/unstable/VLCKit-4.0-20260929-1631.zip",
+  "source_sha256": "f37c8dbdd4427d1a3f5d75dc4b8bd1ae863cef4426f9a405a2fd1c5c9012f1fb",
+  "platforms": ["macosx", "iphoneos", "iphonesimulator", "appletvos", "appletvsimulator", "xros", "xrsimulator"],
+  "wrapper_license": "LGPL-2.1"
+}

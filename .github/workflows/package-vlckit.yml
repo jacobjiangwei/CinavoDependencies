@@ -1,0 +1,56 @@
+name: Package universal VLC runtime
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "New immutable runtime revision, for example 2026.10.08.1"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vlckit-runtime-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+    steps:
+      - name: Check out verified runtime recipe
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Validate release version
+        run: |
+          python3 - <<'PY'
+          import os, re
+          if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", os.environ["RELEASE_VERSION"]):
+              raise ValueError("Use a new immutable runtime revision.")
+          PY
+      - name: Download exact upstream VLC source binary
+        run: |
+          mkdir -p .build/vlckit
+          url="$(python3 -c 'import json; print(json.load(open("vlckit.json"))["source_url"])')"
+          curl --fail --location --show-error --retry 3 --connect-timeout 20 \
+            "$url" -o .build/vlckit/official.zip
+      - name: Verify and package only the required runtime slices
+        run: |
+          python3 scripts/package_vlckit.py \
+            --archive .build/vlckit/official.zip --version "$RELEASE_VERSION"
+      - name: Publish immutable runtime Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          vlc_version="$(python3 -c 'import json; print(json.load(open("vlckit.json"))["version"])')"
+          archive="dist/cinavo-vlckit-${vlc_version}-${RELEASE_VERSION}.zip"
+          gh release create "vlc-${vlc_version}-${RELEASE_VERSION}" \
+            "$archive" "$archive.sha256" "$archive.manifest.json" \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "VLCKit ${vlc_version} runtime ${RELEASE_VERSION}" \
+            --notes "Exact official VLCKit ${vlc_version} binary verified against its upstream SHA-256, repackaged without debug symbols, watchOS or Catalyst slices. Includes all seven native iOS/macOS/tvOS/visionOS device/simulator variants, headers, upstream license notice and per-file provenance manifest. Framework binaries are not recompiled or relicensed."

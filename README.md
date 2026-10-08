@@ -1,8 +1,8 @@
 # CinavoDependencies
 
-FFmpeg build recipes and versioned Release assets for Cinavo. Only FFmpeg is
-delivered here. The consumer resolves unified VLCKit through CocoaPods, with
-its downloaded binaries excluded from the application repository.
+FFmpeg build recipes and independently pinned VLC runtime Release assets for
+Cinavo. The consumer resolves unified VLCKit through a CocoaPod specification
+that points to the verified runtime mirror. No downloaded binary enters Git.
 
 ## FFmpeg
 
@@ -31,7 +31,7 @@ gh workflow run build-dependencies.yml \
   --repo jacobjiangwei/CinavoDependencies --field version=2026.10.08.2
 ```
 
-The arm64 `macos-26` job verifies and compiles FFmpeg from source for all three
+The arm64 `macos-26` job verifies and compiles FFmpeg from source for all seven
 SDK variants. It neither downloads nor packages CocoaPods or VLC. The built-in workflow
 token publishes the Release and is never stored in artifacts.
 
@@ -47,14 +47,34 @@ private consumption requires a repository-scoped Contents: Read token.
 Consumers must verify the checksum and every payload file and must never follow
 `latest` or extract the package over `Pods/`.
 
+## Universal VLC runtime
+
+`vlckit.json` pins the official VLCKit 4.0.0a25 distribution and original archive
+SHA-256. **Package universal VLC runtime** downloads and verifies that original
+archive in GitHub Actions, then preserves the seven required native device/
+simulator slices and their headers, framework symlinks and license notice.
+Only dSYMs, watchOS and Catalyst slices are omitted. The binary libraries are
+neither modified nor recompiled; the trimmed root XCFramework metadata and
+per-file manifest describe the exact runtime payload.
+
+```sh
+gh workflow run package-vlckit.yml \
+  --repo jacobjiangwei/CinavoDependencies --field version=2026.10.08.1
+```
+
+The original upstream archive is approximately 880 MiB. Mirroring only runtime
+inputs avoids repeatedly downloading its unused debug/platform payload on
+every consumer build. CocoaPods still validates the runtime archive SHA-256.
+The consumer's local Podspec pins its immutable Release URL and checksum.
+
 The earlier `2026.10.07.1` and `2026.10.07.2` Releases contain combined
 CocoaPods/VLC/FFmpeg bundles. They are legacy artifacts, not inputs to current
 builds. Existing Releases are not overwritten or automatically deleted.
 
 ## Publication and licensing boundaries
 
-Keep application source, CocoaPods/VLC, app bundles, model weights, signing
-material and credentials out of new commits and Releases. Public visibility
+Keep application source, generated app projects, app bundles, model weights,
+signing material and credentials out of new commits and Releases. Public visibility
 includes history and Actions logs, including the legacy combined releases.
 Third-party code keeps its upstream license; do not apply a blanket proprietary
 or permissive license to these binaries.

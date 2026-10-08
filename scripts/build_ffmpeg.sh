@@ -55,13 +55,17 @@ COMMON_FLAGS=(
   --enable-cross-compile
 )
 
-for platform in macosx iphoneos iphonesimulator; do
+for platform in macosx iphoneos iphonesimulator appletvos appletvsimulator xros xrsimulator; do
   sdk="$(xcrun --sdk "$platform" --show-sdk-path)"
   compiler="$(xcrun --sdk "$platform" --find clang)"
   case "$platform" in
     macosx) minimum="-mmacosx-version-min=26.0" ;;
     iphoneos) minimum="-mios-version-min=26.0" ;;
     iphonesimulator) minimum="-mios-simulator-version-min=26.0" ;;
+    appletvos) minimum="-mtvos-version-min=26.0" ;;
+    appletvsimulator) minimum="-mtvos-simulator-version-min=26.0" ;;
+    xros) minimum="-target arm64-apple-xros26.0" ;;
+    xrsimulator) minimum="-target arm64-apple-xros26.0-simulator" ;;
   esac
   source_root="${BUILD_ROOT}/${platform}"
   source="${source_root}/ffmpeg-${VERSION}"
@@ -111,7 +115,7 @@ info = {
     "format": 1,
     "ffmpeg": spec["ffmpeg"],
     "xcode": subprocess.check_output(["xcodebuild", "-version"], text=True).strip(),
-    "platforms": ["macosx", "iphoneos", "iphonesimulator"],
+    "platforms": spec["ffmpeg"]["platforms"],
     "linkage": "static",
     "gpl_enabled": False,
     "nonfree_enabled": False,

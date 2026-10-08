@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "New immutable FFmpeg version, for example 2026.10.08.1"
+        description: "New immutable FFmpeg version, for example 2026.10.08.2"
         required: true
         type: string
 
@@ -32,6 +32,7 @@ jobs:
         run: |
           python3 - <<'PY'
           import os
+          import json
           import re
           import subprocess
           import sys
@@ -39,7 +40,9 @@ jobs:
               raise ValueError("Use a new dependency version without path separators.")
           if sys.version_info < (3, 12):
               raise RuntimeError("Packaging requires Python 3.12 or newer.")
-          for platform in ("macosx", "iphoneos", "iphonesimulator"):
+          with open("dependencies.json") as source:
+              platforms = json.load(source)["ffmpeg"]["platforms"]
+          for platform in platforms:
               version = subprocess.check_output(
                   ["xcrun", "--sdk", platform, "--show-sdk-version"], text=True
               ).strip()
@@ -48,7 +51,7 @@ jobs:
           PY
           xcodebuild -version
 
-      - name: Compile static LGPL FFmpeg for all three Apple platforms
+      - name: Compile static LGPL FFmpeg for all seven Apple SDK variants
         run: bash scripts/build_ffmpeg.sh
 
       - name: Package and verify FFmpeg
@@ -65,4 +68,4 @@ jobs:
             "$archive" "$archive.sha256" "$archive.manifest.json" "$source" \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
             --title "Cinavo Apple FFmpeg ${RELEASE_VERSION}" \
-            --notes "FFmpeg 7.1.3 built from verified LGPL source on GitHub Actions for arm64 macOS, iOS devices and iOS simulators. Includes five static libraries per platform, headers, LGPL notices, per-file manifest, archive SHA-256 and exact corresponding FFmpeg source. No CocoaPods, VLC frameworks, application code, model weights or debug symbols."
+            --notes "FFmpeg 7.1.3 built from verified LGPL source on GitHub Actions for arm64 macOS and iOS/tvOS/visionOS devices and simulators. Includes 35 static libraries across seven SDK variants, headers, LGPL notices, per-file manifest, archive SHA-256 and exact corresponding FFmpeg source. No CocoaPods, VLC frameworks, application code, model weights or debug symbols."

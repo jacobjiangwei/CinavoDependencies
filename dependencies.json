@@ -6,6 +6,9 @@
     "source_sha256": "f0bf043299db9e3caacb435a712fc541fbb07df613c4b893e8b77e67baf3adbe",
     "macos_minimum": "26.0",
     "ios_minimum": "26.0",
+    "tvos_minimum": "26.0",
+    "visionos_minimum": "26.0",
+    "platforms": ["macosx", "iphoneos", "iphonesimulator", "appletvos", "appletvsimulator", "xros", "xrsimulator"],
     "architectures": ["arm64"],
     "libraries": ["avformat", "avcodec", "avutil", "swresample", "swscale"],
     "license": "LGPL-2.1-or-later"

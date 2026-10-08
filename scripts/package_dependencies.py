@@ -30,7 +30,9 @@ def main():
     build_info = json.loads((ffmpeg / "build-info.json").read_text())
     if build_info["ffmpeg"] != spec["ffmpeg"] or build_info["gpl_enabled"] or build_info["nonfree_enabled"]:
         raise ValueError("FFmpeg build provenance does not match the locked LGPL recipe.")
-    for platform in ("macosx", "iphoneos", "iphonesimulator"):
+    if build_info["platforms"] != spec["ffmpeg"]["platforms"]:
+        raise ValueError("FFmpeg SDK variants do not match the locked platform matrix.")
+    for platform in spec["ffmpeg"]["platforms"]:
         for library in spec["ffmpeg"]["libraries"]:
             path = ffmpeg / platform / "lib" / f"lib{library}.a"
             if not path.is_file() or path.stat().st_size == 0:

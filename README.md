@@ -1,15 +1,16 @@
 # CinavoDependencies
 
 FFmpeg build recipes and versioned Release assets for Cinavo. Only FFmpeg is
-delivered here: CocoaPods and VLC stay in the application repository, following
-the existing iOS project's vendored-Pods workflow.
+delivered here. The consumer resolves unified VLCKit through CocoaPods, with
+its downloaded binaries excluded from the application repository.
 
 ## FFmpeg
 
 `dependencies.json` pins FFmpeg 7.1.3 and its official source SHA-256.
-`scripts/build_ffmpeg.sh` builds five static libraries for each of arm64 macOS,
-iOS devices and iOS simulators: avformat, avcodec, avutil, swresample and swscale.
-Minimum versions are macOS 26.0 and iOS 26.0. CLI programs, GPL components,
+`scripts/build_ffmpeg.sh` builds five static libraries for each of seven arm64
+SDK variants: macOS plus iOS, tvOS and visionOS devices/simulators. The libraries
+are avformat, avcodec, avutil, swresample and swscale. Minimum versions are 26.0
+on all four platforms. CLI programs, GPL components,
 nonfree components and automatically detected external libraries are disabled.
 
 ```sh
@@ -27,11 +28,11 @@ Run **Build Apple FFmpeg** with a new immutable version:
 
 ```sh
 gh workflow run build-dependencies.yml \
-  --repo jacobjiangwei/CinavoDependencies --field version=2026.10.08.1
+  --repo jacobjiangwei/CinavoDependencies --field version=2026.10.08.2
 ```
 
 The arm64 `macos-26` job verifies and compiles FFmpeg from source for all three
-SDKs. It neither downloads nor packages CocoaPods or VLC. The built-in workflow
+SDK variants. It neither downloads nor packages CocoaPods or VLC. The built-in workflow
 token publishes the Release and is never stored in artifacts.
 
 Each `deps-NEW_VERSION` Release includes:
